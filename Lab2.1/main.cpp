@@ -1,11 +1,12 @@
 #include <iostream>
 #include <vector>
-
+//Implement an algorithm for determining all bases 𝑏 with respect to which a composite odd number 𝑛 is pseudoprime.
+// Use the repeated squaring modular exponentiation method.
 std::string toBinary(int n)
 {
 //  return the binary representation of n as a string
     std::string binaryRepresentation;
-    while ( n != 0 ){
+    while ( n != 0 ) {
         binaryRepresentation = ( n % 2 == 0 ? "0" : "1" ) + binaryRepresentation;
         n /= 2;
     }
@@ -51,7 +52,7 @@ std::vector<int> getBases (int n) {
     for (int base = 2; base < n - 1; base ++)
         if ( checkPseudoPrime(n, base) )
             result.push_back(base);
-    result.push_back(-1);
+    result.push_back(n - 1);
     return result;
 }
 
