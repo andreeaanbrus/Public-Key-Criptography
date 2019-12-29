@@ -12,20 +12,27 @@ function isPrime(number) {
         return true;
     if (number > 2 && number % 2 === 0)
         return false;
-    for (let d = 3; d * d < number; d += 3)
+    for (let d = 3; d * d < number; d += 2)
         if (number % d === 0)
             return false;
     return true;
 }
 
 function generatePrime() {
-//generate all prime numbers between 3 and 100 and pick 2 random ones
+//generate all prime numbers between 30 and 100 and pick 2 random ones; this will result in the fact that
+// the encrypted chunk will always have the length three
     const primes = [];
-    for (let i = 3; i < 100; i ++)
+    for (let i = 30; i < 100; i ++)
         if (isPrime(i))
             primes.push(i);
     p = primes[Math.floor(Math.random() * primes.length)];
     q = primes[Math.floor(Math.random() * primes.length)];
+
+    while (p === q)
+    {
+        q = q = primes[Math.floor(Math.random() * primes.length)];
+    }
+
     n = p * q;
 }
 
@@ -38,7 +45,7 @@ function validate(event) {
     }
 }
 
-function euler(n) {
+function euler() {
     return (p-1) * (q-1);
 }
 
@@ -85,10 +92,20 @@ function repeatedSquaring(b, k, n) {
 }
 
 function getD() {
-//    d = e ^ -1 mod euler(n)
-    return repeatedSquaring(e, euler(n) - 1, euler(n));
-}
+// d = e ^ -1 mod euler(n)
+// trivial solution, to not compute euler of euler
 
+    let d = e, eulerNr = euler();
+    for(let i = 1; i < eulerNr; ++i)
+    {
+        if(d * e % eulerNr === 1)
+        {
+            return d;
+        }
+
+        d = d * e % eulerNr;
+    }
+}
 
 function init() {
     e = pickE();
@@ -100,22 +117,25 @@ function init() {
     KD = {
         d : d
     };
+
     console.log("p: " +  p,"q: " + q, "n: " + n, "e: " + e, "KE: " + KE.e, KE.n,"KD: " + KD.d);
 }
 
-function changePQ() {
+function changePQ()
+{
+    // check p * q is big enough
 
-
-    newp = document.getElementById('p').value;
-    newq = document.getElementById('q').value;
-    if (isPrime(newp) && isPrime(newq)) {
+    let newp = document.getElementById('p').value;
+    let newq = document.getElementById('q').value;
+    if (isPrime(newp) && isPrime(newq) && newp * newq > 728 && newp !== newq)
+    {
         p = newp;
         q = newq;
         n = p * q;
         init();
     }
     else {
-        alert("Invalid numbers! The numbers must be prime")
+        alert("Invalid numbers! The numbers must be prime, distinct, and their product above 728")
     }
 }
 
@@ -125,20 +145,98 @@ function changePQ() {
     2.3. Computes c = m^e mod n.
  */
 function encrypt() {
-    console.log("encrypt here");
     input = document.getElementById('plain').value;
     document.getElementById('plain').value = '';
-    document.getElementById("encrypted").value = "Result of encryption should be here. But the input is " + input;
-    input = ''
+
+    let encryptedString = '';
+    for(let i = 0; i < input.length; i += 2)
+    {
+        let chunk = input[i];
+        ((i + 1) >= input.length) ? chunk += ' ' : chunk += input[i + 1];
+
+        let code = repeatedSquaring(chunkToCode(chunk), e, n);
+
+        encryptedString += codeToChunk(code);
+        if(code < 729)
+            encryptedString += ' ';
+        if(code < 27)
+            encryptedString += ' ';
+    }
+
+    console.log('Encrypted: ' + encryptedString);
+    document.getElementById("encrypted").value = encryptedString;
+    input = '';
 }
 
 /* Decryption
     3.1 Use the private key KD = d to get the message m = c^d mod n
 */
 function decrypt() {
-    console.log("Decrypt text here pls");
     encrypted = document.getElementById('encrypted').value;
     document.getElementById('encrypted').value = '';
-    document.getElementById("plain").value = "Result of decryption here. Encrypted text is: " + encrypted;
-    encrypted = ''
+
+    let decryptedString = '';
+    for(let i = 0; i < encrypted.length; i += 3)
+    {
+        let chunk = encrypted[i];
+        (i + 1 >= encrypted.length) ? chunk += ' ' : chunk += encrypted[i + 1];
+        (i + 2 >= encrypted.length) ? chunk += ' ' : chunk += encrypted[i + 2];
+
+        let code = repeatedSquaring(chunkToCode(chunk), getD(), n);
+        let decryptedChunk = codeToChunk(code);
+        if(decryptedChunk.length === 1)
+            decryptedChunk += ' ';
+
+        decryptedString += decryptedChunk;
+    }
+
+    console.log('Decrypted: ' + decryptedString);
+    document.getElementById("plain").value = decryptedString;
+    input = '';
+    encrypted = '';
+}
+
+// ' ' corresponds to 0 and letters a-z correspond to numbers from 1 to 26
+function  mapCharToCode(chr)
+{
+    if(chr === ' ')
+        return 0;
+    else
+        return chr.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+}
+
+function mapCodeToChar(code)
+{
+    if(code === 0)
+        return ' ';
+    else
+        return String.fromCharCode(96 + code);
+}
+
+// we encrypt chunks of letters and the code corresponding to a chunk is in base 27
+function chunkToCode(chrs)
+{
+    let code = 0, pow = 1;
+    for(let i = 0; i < chrs.length; ++i)
+    {
+        code += pow * mapCharToCode(chrs[i]);
+        pow *= 27;
+    }
+
+    return code;
+}
+
+function codeToChunk(code)
+{
+    if(code === 0)
+        return ' ';
+
+    let chunk = '';
+    while(code !== 0)
+    {
+        chunk += mapCodeToChar(code % 27);
+        code = Math.floor(code / 27);
+    }
+
+    return chunk;
 }
